@@ -1,4 +1,5 @@
 #!/bin/bash
+source /etc/os-release
 
 dnf_install() {
   local rpm_list=("python3" "python3-pip" "python3-argcomplete" \
@@ -14,22 +15,26 @@ dnf_install() {
   # All the UBI-based ones
   if [ "$containerfile" = "ramalama" ] || [ "$containerfile" = "rocm" ] || \
     [ "$containerfile" = "vulkan" ]; then
-    local url="https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm"
-    dnf install -y "$url"
-    crb enable # this is in epel-release, can only install epel-release via url
-    dnf --enablerepo=ubi-9-appstream-rpms install -y "${rpm_list[@]}"
-    # x86_64 and aarch64 means kompute
-    if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ] ;then
-      dnf copr enable -y slp/mesa-krunkit "epel-9-$uname_m"
-      url="https://mirror.stream.centos.org/9-stream/AppStream/$uname_m/os/"
-      dnf config-manager --add-repo "$url"
-      url="http://mirror.centos.org/centos/RPM-GPG-KEY-CentOS-Official"
-      curl --retry 8 --retry-all-errors -o \
-	      /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official "$url"
-      rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official
-      dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}"
+    if [ "${ID}" = "fedora" ]; then
+      dnf install -y "${rpm_list[@]}"
     else
-      dnf install -y "${blas_rpms[@]}"
+      local url="https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm"
+      dnf install -y "$url"
+      crb enable # this is in epel-release, can only install epel-release via url
+      dnf --enablerepo=ubi-9-appstream-rpms install -y "${rpm_list[@]}"
+      # x86_64 and aarch64 means kompute
+      if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ] ;then
+        dnf copr enable -y slp/mesa-krunkit "epel-9-$uname_m"
+        url="https://mirror.stream.centos.org/9-stream/AppStream/$uname_m/os/"
+        dnf config-manager --add-repo "$url"
+        url="http://mirror.centos.org/centos/RPM-GPG-KEY-CentOS-Official"
+        curl --retry 8 --retry-all-errors -o \
+            /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official "$url"
+        rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official
+        dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}"
+      else
+        dnf install -y "${blas_rpms[@]}"
+      fi
     fi
   fi
 
@@ -38,7 +43,11 @@ dnf_install() {
     dnf install -y asahi-repos
     dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}" "${rpm_list[@]}"
   elif [ "$containerfile" = "rocm" ]; then
-    dnf install -y rocm-dev hipblas-devel rocblas-devel
+    if [ "${ID}" = "fedora" ]; then
+      dnf install -y rocm-core-devel hipblas-devel rocblas-devel rocm-hip-devel
+    else
+      dnf install -y rocm-dev hipblas-devel rocblas-devel
+    fi
   elif [ "$containerfile" = "cuda" ]; then
     dnf install -y "${rpm_list[@]}" gcc-toolset-12
     # shellcheck disable=SC1091
@@ -74,7 +83,15 @@ configure_common_flags() {
   common_flags=("-DGGML_NATIVE=OFF")
   case "$containerfile" in
     rocm)
+      if [ "${ID}" = "fedora" ]; then
+        common_flags+=("-DCMAKE_HIP_COMPILER_ROCM_ROOT=/usr")
+        common_flags+=("-DGGML_HIP=ON" "-DAMDGPU_TARGETS=${AMDGPU_TARGETS:-gfx1010,gfx1030,gfx1032,gfx1100,gfx1101,gfx1102,gfx1103}")
+      fi
       common_flags+=("-DGGML_HIP=ON" "-DAMDGPU_TARGETS=${AMDGPU_TARGETS:-gfx1010,gfx1030,gfx1032,gfx1100,gfx1101,gfx1102}")
+      if [ "${ID}" = "fedora" ]; then
+        common_flags+=("-DCMAKE_HIP_COMPILER_ROCM_ROOT=/usr")
+        common_flags+=("-DGGML_HIP=ON" "-DAMDGPU_TARGETS=${AMDGPU_TARGETS:-gfx1010,gfx1030,gfx1032,gfx1100,gfx1101,gfx1102,gfx1103}")
+      fi
       ;;
     cuda)
       common_flags+=("-DGGML_CUDA=ON" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined")
