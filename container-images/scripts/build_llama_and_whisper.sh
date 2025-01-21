@@ -37,7 +37,7 @@ dnf_install() {
     dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}" "${rpm_list[@]}"
   elif [ "$containerfile" = "rocm" ]; then
     if [ "${ID}" = "fedora" ]; then
-      dnf install -y rocm-core-devel hipblas-devel rocblas-devel
+      dnf install -y rocm-core-devel hipblas-devel rocblas-devel rocm-hip-devel
     else
       dnf install -y rocm-dev hipblas-devel rocblas-devel
     fi
@@ -72,6 +72,9 @@ configure_common_flags() {
   case "$containerfile" in
     rocm)
       common_flags+=("-DGGML_HIP=ON" "-DAMDGPU_TARGETS=${AMDGPU_TARGETS:-gfx1010,gfx1030,gfx1032,gfx1100,gfx1101,gfx1102}")
+      if [ "${ID}" = "fedora" ]; then
+        common_flags+=("-DCMAKE_HIP_COMPILER_ROCM_ROOT=/usr")
+      fi
       ;;
     cuda)
       common_flags+=("-DGGML_CUDA=ON" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined")
