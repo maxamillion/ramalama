@@ -74,6 +74,7 @@ configure_common_flags() {
       common_flags+=("-DGGML_HIP=ON" "-DAMDGPU_TARGETS=${AMDGPU_TARGETS:-gfx1010,gfx1030,gfx1032,gfx1100,gfx1101,gfx1102}")
       if [ "${ID}" = "fedora" ]; then
         common_flags+=("-DCMAKE_HIP_COMPILER_ROCM_ROOT=/usr")
+        common_flags+=("-DGGML_HIP=ON" "-DAMDGPU_TARGETS=${AMDGPU_TARGETS:-gfx1010,gfx1030,gfx1032,gfx1100,gfx1101,gfx1102,gfx1103}")
       fi
       ;;
     cuda)
