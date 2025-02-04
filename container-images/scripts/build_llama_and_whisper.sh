@@ -31,10 +31,13 @@ dnf_install() {
         curl --retry 8 --retry-all-errors -o \
             /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official "$url"
         rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official
-        dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}"
-      else
-        dnf install -y "${blas_rpms[@]}"
       fi
+    fi
+
+    if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ] ;then
+      dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}"
+    else
+      dnf install -y "${blas_rpms[@]}"
     fi
   fi
 
